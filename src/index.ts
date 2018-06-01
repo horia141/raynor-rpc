@@ -1,4 +1,4 @@
-import { MarshalWith, MarshallerConstructor } from 'raynor'
+import { MarshalWith, MarshallerConstructor, MarshalFrom, ArrayOf } from 'raynor'
 import * as r from 'raynor'
 
 // We want some things.
@@ -7,42 +7,95 @@ import * as r from 'raynor'
 // Ultimately this can be just a JSON. But it's a bad way to specify things, so something looking
 // like a class would be the best.
 
+async function nop<T>(..._args: any[]): Promise<T> {
+    throw new Error('Cannot invoke this function directly');
+}
+
+interface RpcParamDescriptor<T> {
+    index: number;
+    ctor: MarshallerConstructor<T>;
+    required: boolean;
+}
+
+interface RpcOutputDescriptor<T> {
+    ctor: MarshallerConstructor<T>;
+}
+
+interface RpcMethodDescriptor<T> {
+    name: string;
+    input: Array<RpcParamDescriptor<any>>;
+    hasOutput: boolean;
+    output: RpcOutputDescriptor<T>|null;
+    errors: Set<any>;
+}
+
+interface RpcSchema {
+    methods: Map<string, RpcMethodDescriptor<any>>;
+}
+
+function _ensureSchema(target: any) {
+    if (!(target.hasOwnProperty('__schema'))) {
+        target.__schema = {
+            methods: new Map<string, RpcMethodDescriptor<any>>()
+        } as RpcSchema;
+    }
+}
+
+function _ensureMethodDescription(target: any, methodName: string) {
+    if (!target.__schema.methods.has(methodName)) {
+        target.__schema.methods.set(methodName, {
+            name: methodName,
+            input: [],
+            hasOutput: false,
+            output: null
+        });
+    }
+}
+
 function Rpc() {
     return function(target: any, methodName: string) {
-        if (!(target.hasOwnProperty('__schema'))) {
-            target.__schema = {
-                'rpcs': {}
-            };
-        }
+        _ensureSchema(target);
+        _ensureMethodDescription(target, methodName);
+    }
+}
 
-        if (!(methodName in target.__schema['rpcs'])) {
-            target.__schema['rpcs'][methodName] = {
-                input: [],
-                output: {}
-            };
-        }
+function RpcOutput<T>(marshallerCtor: MarshallerConstructor<T>) {
+    return function(target: any, methodName: string) {
+        _ensureSchema(target);
+        _ensureMethodDescription(target, methodName);
+
+        target.__schema.methods.get(methodName).hasOutput = true;
+        target.__schema.methods.get(methodName).output = {
+            ctor: marshallerCtor
+        };
+    }
+}
+
+function RpcThrows(...errorConstructors: any[]) {
+    return function(target: any, methodName: string) {
+        _ensureSchema(target);
+        _ensureMethodDescription(target, methodName);
+
+        target.__schema.methods.get(methodName).errors = new Set<any>(errorConstructors);
     }
 }
 
 function RpcParam<T>(marshallerCtor: MarshallerConstructor<T>) {
-    return function(target: any, methodName: string | symbol, parameterIndex: number) {
-        if (!(target.hasOwnProperty('__schema'))) {
-            target.__schema = {
-                'rpcs': {}
-            };
-        }
+    return function(target: any, methodName: string, parameterIndex: number) {
+        _ensureSchema(target);
+        _ensureMethodDescription(target, methodName);
 
-        if (!(methodName in target.__schema['rpcs'])) {
-            target.__schema['rpcs'][methodName] = {
-                input: [],
-                output: {}
-            };
-        }
-
-        target.__schema['rpcs'][methodName].input[parameterIndex] = {
+        target.__schema.methods.get(methodName).input[parameterIndex] = {
+            index: parameterIndex,
             ctor: marshallerCtor,
             required: true
         };
+    }
+}
+
+export class TestBookError extends Error {
+    constructor() {
+        super('Tried to do something with a test book!');
     }
 }
 
@@ -53,17 +106,16 @@ export class Book {
     title: string = '';
 }
 
-async function nop<T>(..._args: any[]): Promise<T> {
-    throw new Error('Cannot invoke this function directly');
-}
-
 export class LibraryService {
     @Rpc()
+    @RpcOutput(ArrayOf(MarshalFrom(Book)))
     async getBooks(): Promise<Book[]> {
         return nop<Book[]>();
     }
 
     @Rpc()
+    @RpcOutput(MarshalFrom(Book))
+    @RpcThrows(TestBookError)
     async updateBook(
         @RpcParam(r.IdMarshaller) bookId: number,
         @RpcParam(r.StringMarshaller) newTitle: string): Promise<Book> {
