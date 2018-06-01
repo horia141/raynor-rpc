@@ -2,5 +2,7 @@ export {
     Method,
     NoOutput,
     Output,
-    Param
+    Param,
+    Service,
+    Throws
 } from './annotations'

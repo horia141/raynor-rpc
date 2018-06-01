@@ -1,7 +1,7 @@
 import { MarshalWith, MarshalFrom, ArrayOf } from 'raynor'
 import * as r from 'raynor'
 
-import { Param, Method, Output, Throws } from './annotations'
+import { Param, Method, Output, Service, Throws } from './annotations'
 
 // We want some things.
 
@@ -26,6 +26,7 @@ export class Book {
     title: string = '';
 }
 
+@Service
 export class LibraryService {
     @Method()
     @Output(ArrayOf(MarshalFrom(Book)))

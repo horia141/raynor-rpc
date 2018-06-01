@@ -1,6 +1,7 @@
 import { MarshallerConstructor } from 'raynor'
 
 interface ServiceDescriptor {
+    name: string;
     methods: Map<string, MethodDescriptor<any>>;
 }
 
@@ -26,6 +27,13 @@ interface ParamDescriptor<T> {
     required: boolean;
 }
 
+export function Service(target: Function) {
+    _ensureServiceDescriptor(target.prototype);
+
+    // Bear with me.
+    target.prototype.__service.name = target.name;
+}
+
 export function Method() {
     return function(target: any, methodName: string) {
         const service = _ensureServiceDescriptor(target);
@@ -45,16 +53,14 @@ export function Output<T>(marshallerCtor: MarshallerConstructor<T>) {
     }
 }
 
-export function NoOutput() {
-    return function(target: any, methodName: string) {
-        const service = _ensureServiceDescriptor(target);
-        const method = _ensureMethodDescription(service, methodName);
+export function NoOutput(target: any, methodName: string) {
+    const service = _ensureServiceDescriptor(target);
+    const method = _ensureMethodDescription(service, methodName);
 
-        method.output = {
-            hasOutput: false,
-            ctor: null
-        };
-    }
+    method.output = {
+        hasOutput: false,
+        ctor: null
+    };
 }
 
 export function Throws(...errorConstructors: any[]) {
@@ -84,6 +90,7 @@ export function Param<T>(marshallerCtor: MarshallerConstructor<T>) {
 function _ensureServiceDescriptor(target: any): ServiceDescriptor {
     if (!(target.hasOwnProperty('__service'))) {
         target.__service = {
+            name: target.name,
             methods: new Map<string, MethodDescriptor<any>>()
         };
     }
