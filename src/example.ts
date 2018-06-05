@@ -2,6 +2,7 @@ import { MarshalWith, MarshalFrom, ArrayOf } from 'raynor'
 import * as r from 'raynor'
 
 import { Param, Method, Output, Service, Throws } from './annotations'
+import { newInMemoryServer, newInMemoryClient } from './worker'
 
 // We want some things.
 
@@ -44,19 +45,31 @@ export class LibraryService {
     }
 }
 
-export class LibraryServiceServer extends LibraryService {
+export class LibraryServiceImpl extends LibraryService {
     async getBooks(): Promise<Book[]> {
         return [];
     }
 
-    async updateBook(_bookId: number, _newTitle: string): Promise<Book> {
-        return new Book();
+    async updateBook(bookId: number, newTitle: string): Promise<Book> {
+        const book = new Book();
+        book.id = bookId;
+        book.title = newTitle;
+        return book;
     }
 }
 
-const ll = new LibraryServiceServer();
+console.log("\n=== Impl ===\n");
+const ll = new LibraryServiceImpl();
 console.log((ll as any).__service);
-ll.getBooks().then(l => console.log(JSON.stringify(l)));
+//ll.getBooks().then(l => console.log(JSON.stringify(l)));
+
+console.log("\n=== The Server ===\n");
+const server = newInMemoryServer(LibraryService, ll);
+
+console.log("\n=== Client ===\n");
+const client = newInMemoryClient(LibraryService, server);
+client.getBooks().then(bs => console.log(bs) );
+client.updateBook(10, 'Hello').then(b => console.log(b));
 
 // A way to build a client object from the point-of-truth class/object. This has a bunch of async
 // methods for each one defined there, and allows "almost-local" behaviour. It should be modulated

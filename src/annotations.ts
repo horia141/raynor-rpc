@@ -1,35 +1,34 @@
-import { MarshallerConstructor } from 'raynor'
+import { Constructor, MarshallerConstructor, Marshaller } from 'raynor'
 
-interface ServiceDescriptor {
+export interface ServiceDescriptor {
     name: string;
     methods: Map<string, MethodDescriptor<any>>;
 }
 
-interface MethodDescriptor<T> {
+export interface MethodDescriptor<T> {
     name: string;
     output?: OutputDescriptor<T>;
     errors?: ErrorDescriptor;
     params: Array<ParamDescriptor<any>>;
 }
 
-interface OutputDescriptor<T> {
+export interface OutputDescriptor<T> {
     hasOutput: boolean;
-    ctor: MarshallerConstructor<T>|null;
+    marshaller: Marshaller<T>|null;
 }
 
-interface ErrorDescriptor {
-    ctors: Set<any>;
+export interface ErrorDescriptor {
+    errorConstructors: Set<Constructor<Error>>;
 }
 
-interface ParamDescriptor<T> {
+export interface ParamDescriptor<T> {
     index: number;
-    ctor: MarshallerConstructor<T>;
+    marshaller: Marshaller<T>;
     required: boolean;
 }
 
 export function Service(target: Function) {
     _ensureServiceDescriptor(target.prototype);
-
     // Bear with me.
     target.prototype.__service.name = target.name;
 }
@@ -48,7 +47,7 @@ export function Output<T>(marshallerCtor: MarshallerConstructor<T>) {
 
         method.output = {
             hasOutput: true,
-            ctor: marshallerCtor
+            marshaller: new marshallerCtor()
         };
     }
 }
@@ -59,17 +58,17 @@ export function NoOutput(target: any, methodName: string) {
 
     method.output = {
         hasOutput: false,
-        ctor: null
+        marshaller: null
     };
 }
 
-export function Throws(...errorConstructors: any[]) {
+export function Throws(...errorConstructors: Constructor<Error>[]) {
     return function(target: any, methodName: string) {
         const service = _ensureServiceDescriptor(target);
         const method = _ensureMethodDescription(service, methodName);
 
         method.errors = {
-            ctors: new Set<any>(errorConstructors)
+            errorConstructors: new Set<any>(errorConstructors)
         };
     }
 }
@@ -81,7 +80,7 @@ export function Param<T>(marshallerCtor: MarshallerConstructor<T>) {
 
         method.params[parameterIndex] = {
             index: parameterIndex,
-            ctor: marshallerCtor,
+            marshaller: new marshallerCtor(),
             required: true
         };
     }
