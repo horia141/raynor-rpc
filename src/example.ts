@@ -1,18 +1,11 @@
 import { MarshalWith, MarshalFrom, ArrayOf } from 'raynor'
 import * as r from 'raynor'
 
+import { nop } from './core'
 import { Param, Method, Output, Service, Throws } from './annotations'
 import { newInMemoryServer, newInMemoryClient } from './worker'
 
 // We want some things.
-
-// A single point-of-truth class/object which depends on a bunch of entities annotated with Raynor
-// Ultimately this can be just a JSON. But it's a bad way to specify things, so something looking
-// like a class would be the best.
-
-async function nop<T>(..._args: any[]): Promise<T> {
-    throw new Error('Cannot invoke this function directly');
-}
 
 export class TestBookError extends Error {
     constructor() {

@@ -1,31 +1,6 @@
-import { Constructor, MarshallerConstructor, Marshaller } from 'raynor'
+import { Constructor, MarshallerConstructor } from 'raynor'
 
-export interface ServiceDescriptor {
-    name: string;
-    methods: Map<string, MethodDescriptor<any>>;
-}
-
-export interface MethodDescriptor<T> {
-    name: string;
-    output?: OutputDescriptor<T>;
-    errors?: ErrorDescriptor;
-    params: Array<ParamDescriptor<any>>;
-}
-
-export interface OutputDescriptor<T> {
-    hasOutput: boolean;
-    marshaller: Marshaller<T>|null;
-}
-
-export interface ErrorDescriptor {
-    errorConstructors: Set<Constructor<Error>>;
-}
-
-export interface ParamDescriptor<T> {
-    index: number;
-    marshaller: Marshaller<T>;
-    required: boolean;
-}
+import { ServiceDescriptor, MethodDescriptor } from './core'
 
 export function Service(target: Function) {
     _ensureServiceDescriptor(target.prototype);

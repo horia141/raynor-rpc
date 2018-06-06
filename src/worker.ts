@@ -1,6 +1,6 @@
 import { Constructor, Marshaller } from 'raynor'
 
-import { ServiceDescriptor, MethodDescriptor, OutputDescriptor } from './annotations'
+import { ServiceDescriptor, MethodDescriptor, OutputDescriptor } from './core'
 
 export interface InputData {
     params: any[];
